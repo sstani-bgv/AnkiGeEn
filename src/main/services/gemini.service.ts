@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
-import { WordMeaningResponse, BatchWordResult } from '../../shared/types';
+import { WordMeaningResponse, BatchWordResult, ParsedWord } from '../../shared/types';
+import { formatPartOfSpeech } from '../../shared/utils/wordParser';
 
 class AIService {
   private client: OpenAI | null = null;
@@ -20,28 +21,35 @@ class AIService {
   /**
    * Generates cards for multiple words in a single request (batch)
    * Returns results grouped by word
+   * Accepts parsed words with part of speech constraints
    */
-  async generateWordMeaningsBatch(words: string[], examplesPerMeaning: number): Promise<BatchWordResult[]> {
+  async generateWordMeaningsBatch(parsedWords: ParsedWord[], examplesPerMeaning: number): Promise<BatchWordResult[]> {
     this.ensureInitialized();
 
-    const wordsList = words.map((w, i) => `${i + 1}. "${w}"`).join('\n');
+    const wordsList = parsedWords.map((pw, i) =>
+      `${i + 1}. "${pw.word}" (${formatPartOfSpeech(pw.partOfSpeech)})`
+    ).join('\n');
 
     const prompt = `You are an expert lexicographer creating Anki flashcards for ESL students (English as a Second Language).
 
-TASK: For EACH of the following words, identify ALL distinct common meanings and create a separate entry for each meaning.
+TASK: For EACH word below, generate 1-2 MAIN meanings only. Follow the part of speech constraint if specified.
 
 WORDS:
 ${wordsList}
 
 RULES:
-1. **Multiple Meanings**: If a word has several common meanings (e.g., "run" as verb "to move fast" vs "to manage" vs noun "a jog"), create a SEPARATE entry for EACH meaning.
-2. **Simple Vocabulary (Critical)**: Write definitions using ONLY words from the 'Longman Defining Vocabulary' (A1-B1 level). If you must use a harder word, explain it simply.
-3. **COBUILD Style**: Use full sentence definitions (e.g., "If you <b>run</b>, you move very quickly using your legs.")
-4. **Clarity Check**: The definition must be EASIER to understand than the target word itself.
-5. **Bold Target Word**: Wrap the target word (or its form) with <b></b> tags in BOTH the definition AND the example sentences.
-6. **Additional Examples**: Provide ${examplesPerMeaning} more examples for the SAME meaning.
+1. **Meaning Limit**: Generate only 1-2 most common/important meanings per word. Focus on the most frequently used definitions.
+2. **Part of Speech Constraint**:
+   - If "(verb only)" is specified, generate ONLY verb definitions.
+   - If "(noun only)" is specified, generate ONLY noun definitions.
+   - If "(any part of speech)" is specified, generate the 1-2 most common meanings regardless of word type.
+3. **Simple Vocabulary (Critical)**: Write definitions using ONLY words from the 'Longman Defining Vocabulary' (A1-B1 level). If you must use a harder word, explain it simply.
+4. **COBUILD Style**: Use full sentence definitions (e.g., "If you <b>run</b>, you move very quickly using your legs.")
+5. **Clarity Check**: The definition must be EASIER to understand than the target word itself.
+6. **Bold Target Word**: Wrap the target word (or its form) with <b></b> tags in BOTH the definition AND the example sentences.
+7. **Additional Examples**: Provide ${examplesPerMeaning} more examples for the SAME meaning.
 
-Respond with a JSON array where each object represents ONE word with all its meanings:
+Respond with a JSON array where each object represents ONE word with its meanings:
 [
   {
     "word": "run",
@@ -53,35 +61,28 @@ Respond with a JSON array where each object represents ONE word with all its mea
         "exampleType": "run",
         "examples": ["She <b>runs</b> faster than anyone.", "The children were <b>running</b>."],
         "transcription": "rʌn"
-      },
-      {
-        "wordType": "verb",
-        "definition": "If you <b>run</b> a business or organization, you are in charge of it.",
-        "definitionExample": "She <b>runs</b> a small coffee shop.",
-        "exampleType": "runs",
-        "examples": ["He <b>runs</b> the company.", "Who <b>runs</b> this department?"],
-        "transcription": "rʌn"
       }
     ]
   },
   {
-    "word": "happy",
+    "word": "book",
     "meanings": [
       {
-        "wordType": "adjective",
-        "definition": "If you are <b>happy</b>, you feel pleasure, often because something good has happened.",
-        "definitionExample": "She was <b>happy</b> to see her friends.",
-        "exampleType": "happy",
-        "examples": ["I'm so <b>happy</b> for you!", "They look very <b>happy</b> together."],
-        "transcription": "ˈhæpi"
+        "wordType": "noun",
+        "definition": "A <b>book</b> is a number of pages of text held together in a cover.",
+        "definitionExample": "I'm reading a <b>book</b> about history.",
+        "exampleType": "book",
+        "examples": ["She bought a new <b>book</b>.", "This <b>book</b> is very interesting."],
+        "transcription": "bʊk"
       }
     ]
   }
 ]
 
 IMPORTANT:
-- Process ALL ${words.length} words
-- Include 1-4 meanings per word depending on how many common uses it has
+- Process ALL ${parsedWords.length} words
+- Generate ONLY 1-2 meanings per word (not more!)
+- Strictly follow part of speech constraints when specified
 - Skip rare or archaic meanings
 - Respond with ONLY the JSON array, no other text`;
 

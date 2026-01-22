@@ -1,4 +1,4 @@
-import { AnkiNote, BatchWordResult, AppSettings } from '../shared/types';
+import { AnkiNote, BatchWordResult, AppSettings, ParsedWord } from '../shared/types';
 
 export interface ElectronAPI {
   shell: {
@@ -13,7 +13,7 @@ export interface ElectronAPI {
     checkConnection: () => Promise<boolean>;
   };
   ai: {
-    generateBatch: (words: string[], examplesCount: number) => Promise<BatchWordResult[]>;
+    generateBatch: (parsedWords: ParsedWord[], examplesCount: number) => Promise<BatchWordResult[]>;
   };
   tts: {
     generateAudio: (text: string) => Promise<ArrayBuffer>;

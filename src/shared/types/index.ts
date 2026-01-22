@@ -1,3 +1,6 @@
+// Re-export word parser types
+export { ParsedWord, PartOfSpeech } from '../utils/wordParser';
+
 // Core data types
 
 export interface GeneratedCard {

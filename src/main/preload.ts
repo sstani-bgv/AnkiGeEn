@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import { IPC_CHANNELS } from '../shared/types';
+import { IPC_CHANNELS, ParsedWord } from '../shared/types';
 
 // Expose protected methods that allow the renderer process to use
 // ipcRenderer without exposing the entire object
@@ -24,8 +24,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // AI APIs (ProxyAPI)
   ai: {
-    generateBatch: (words: string[], examplesCount: number) =>
-      ipcRenderer.invoke(IPC_CHANNELS.AI_GENERATE_BATCH, words, examplesCount)
+    generateBatch: (parsedWords: ParsedWord[], examplesCount: number) =>
+      ipcRenderer.invoke(IPC_CHANNELS.AI_GENERATE_BATCH, parsedWords, examplesCount)
   },
 
   // TTS APIs
